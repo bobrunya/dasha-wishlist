@@ -1,0 +1,19 @@
+name: Поддержание базы активной
+# Бесплатный проект Supabase засыпает после недели без запросов. Раз в день делаем один лёгкий запрос.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Запрос к каталогу
+        run: |
+          set -a; . web/.env.production; set +a
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$VITE_SUPABASE_URL/rest/v1/rpc/get_catalog" \
+            -H "apikey: $VITE_SUPABASE_PUBLISHABLE_KEY" -H 'Content-Type: application/json' -d '{}')
+          echo "HTTP $code"; test "$code" = 200

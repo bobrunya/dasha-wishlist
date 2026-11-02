@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --color-blush: #F6D6DC;
+  --color-blush-soft: #FBEAEE;
+  --color-blush-deep: #E9A9B6;
+  --color-baby: #D3E6F5;
+  --color-baby-soft: #EAF3FB;
+  --color-baby-deep: #9CC3E3;
+  --color-cream: #FBF5EE;
+  --color-cream-deep: #F3E8DA;
+  --color-cocoa: #4A2C24;
+  --color-cocoa-soft: #7A5A50;
+  --color-cocoa-mute: #A08A82;
+
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --radius-card: 1.75rem;
+  --shadow-soft: 0 10px 30px -12px rgb(74 44 36 / 0.18);
+  --shadow-lift: 0 18px 40px -14px rgb(74 44 36 / 0.28);
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-fade-up: fade-up 0.6s cubic-bezier(.2,.7,.2,1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(4deg); }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes shimmer {
+    from { background-position: -400px 0; }
+    to { background-position: 400px 0; }
+  }
+}
+
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  @apply bg-cream text-cocoa font-sans antialiased;
+  min-height: 100dvh;
+}
+h1, h2, h3, .font-display { font-variant-numeric: lining-nums; }
+::selection { background: var(--color-blush); }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-cream-deep) 0, #fff 120px, var(--color-cream-deep) 240px);
+  background-size: 800px 100%;
+  animation: var(--animate-shimmer);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

@@ -1,0 +1,13 @@
+node_modules
+dist
+*.local.ts
+*.local
+.env
+.env.*
+!.env.example
+/private/
+
+!.env.production
+supabase/.temp/
+.DS_Store
+/seed-media/
