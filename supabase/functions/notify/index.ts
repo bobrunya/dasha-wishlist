@@ -38,18 +38,27 @@ Deno.serve(async req => {
       let text = ''
       if (it.event === 'funded') {
         const { data: g } = await db.from('gifts').select('title').eq('id', it.payload.gift).single()
-        text = `🎉 <b>Подарок собран!</b>\n${esc(g?.title ?? '')}`
+        text = `🎉 На «${esc(g?.title ?? '')}» собрана вся сумма!`
       } else {
         const { data: c } = await db.from('contributions').select('*, gifts(title)').eq('id', it.payload.id).single()
         if (!c) { await done(null); continue }
-        const who = `${esc(c.donor_name)} (${esc(c.donor_telegram)})`
-        const what = `${esc(c.gifts?.title ?? '')}\n${money(c.pay_amount_minor, c.pay_currency)}`
+        const tg = String(c.donor_telegram).replace(/^@/, '')
+        const name = esc(c.donor_name)
+        const who = `${name} (<a href="https://t.me/${tg}">@${esc(tg)}</a>)`
+        const gift = `«${esc(c.gifts?.title ?? '')}»`
+        const sum = money(c.pay_amount_minor, c.pay_currency)
+        const over = it.payload.kind === 'overpayment'
+          ? await db.from('conflicts').select('details').eq('contribution_id', c.id).eq('kind', 'overpayment').order('created_at', { ascending: false }).limit(1).maybeSingle()
+          : null
+        const overBy = over?.data?.details?.over ? money(over.data.details.over, c.gift_currency) : ''
         text = {
-          new: `🆕 <b>Новая заявка</b> № ${c.public_ref}\n${what}\nОт: ${who}\nЖдём перевод.`,
-          reported: `💸 <b>Гость сообщил о переводе</b> № ${c.public_ref}\n${what}\nОт: ${who}\nПроверьте поступление и подтвердите.`,
-          receipt: `📎 <b>Загружен чек</b> № ${c.public_ref}\n${what}\nОт: ${who}`,
-          expired: `⌛ <b>Бронь истекла</b> № ${c.public_ref}\n${what}\nОт: ${who}`,
-          conflict: `⚠️ <b>${it.payload.kind === 'overpayment' ? 'Переплата' : 'Перевод после окончания брони'}</b> № ${c.public_ref}\n${what}\nОт: ${who}\nНужно решить вручную.`,
+          new: `🎁 ${who} выбрал(а) подарок ${gift} — ${sum}`,
+          reported: `💸 ${who} пишет, что перевёл(а) ${sum} за ${gift}\nПроверьте банк. Если деньги пришли, нажмите «Подтвердить» в админке.`,
+          receipt: `📎 ${who} прислал(а) чек за ${gift} — ${sum}\nПосмотреть можно в админке.`,
+          expired: `⌛ ${who} выбрал(а) ${gift}, но за ${s.reservation_hours} ч не перевёл(а) ${sum}\nСумма снова свободна для других. Можете написать ${name} в Telegram.`,
+          conflict: over
+            ? `⚠️ ${who} перевёл(а) за ${gift} ${overBy ? `на ${overBy} ` : ''}больше, чем оставалось собрать\nНапишите: вернуть разницу или перенести на другой подарок.`
+            : `⚠️ ${who} перевёл(а) ${sum} за ${gift} уже после того, как истекло время брони\nПроверьте, не собрал ли кто-то эту сумму раньше, и решите в админке.`,
         }[it.event as string] ?? `Событие ${it.event}`
       }
       await send(token, s.telegram_chat_id, text)
