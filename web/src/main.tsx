@@ -17,6 +17,10 @@ import '@fontsource/manrope/cyrillic-700.css'
 import './index.css'
 import App from './App.tsx'
 
+// При обновлении страницы всегда начинаем сверху, а не там, где были раньше.
+try { history.scrollRestoration = 'manual' } catch { /* старые браузеры */ }
+window.scrollTo(0, 0)
+
 const Admin = lazy(() => import('./admin/Admin'))
 const isAdmin = new URLSearchParams(location.search).has('admin')
 if (isAdmin) document.title = 'Админка · Dasha’s Wishlist'
