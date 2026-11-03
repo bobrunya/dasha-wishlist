@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource/cormorant-garamond/latin-500.css'
 import '@fontsource/cormorant-garamond/latin-600.css'
@@ -17,8 +17,12 @@ import '@fontsource/manrope/cyrillic-700.css'
 import './index.css'
 import App from './App.tsx'
 
+const Admin = lazy(() => import('./admin/Admin'))
+const isAdmin = new URLSearchParams(location.search).has('admin')
+if (isAdmin) document.title = 'Админка · Dasha’s Wishlist'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {isAdmin ? <Suspense fallback={null}><Admin /></Suspense> : <App />}
   </StrictMode>,
 )

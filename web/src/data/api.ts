@@ -1,10 +1,11 @@
-import type { ContributionDraft, CreatedContribution, PublicGift, SiteSettings } from '../lib/types'
+import type { ContributionStatus, ContributionDraft, CreatedContribution, PublicGift, SiteSettings } from '../lib/types'
 import { creditFor, payLimit, progressOf } from '../lib/money'
 import { seedGifts } from './catalog'
 import heroPhoto from '../assets/hero-dasha.webp'
 import { DEFAULT_WELCOME } from './content'
 import type { Currency, GiftImage, PaymentDetails } from '../lib/types'
-import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { SB_KEY, SB_URL, mediaUrl, sb as client } from './supabase'
 import { getTurnstileToken } from './turnstile'
 
 // Реквизиты для предпросмотра лежат в payment.local.ts, который не попадает в репозиторий.
@@ -20,6 +21,7 @@ export interface WishlistApi {
   loadCatalog(): Promise<{ gifts: PublicGift[]; settings: SiteSettings }>
   createContribution(draft: ContributionDraft): Promise<CreatedContribution>
   reportPaid(contributionId: string, cancelToken: string): Promise<void>
+  status(contributionId: string, cancelToken: string): Promise<ContributionStatus | null>
   cancel(contributionId: string, cancelToken: string): Promise<void>
   uploadReceipt(contributionId: string, cancelToken: string, file: File): Promise<void>
 }
@@ -92,6 +94,7 @@ function previewApi(): WishlistApi {
       }
     },
     async reportPaid() { await wait(400) },
+    async status() { return null },
     async cancel() { await wait(400) },
     async uploadReceipt(_id, _token, file) {
       const err = checkReceipt(file)
@@ -102,8 +105,6 @@ function previewApi(): WishlistApi {
 }
 
 // ---------- Живой режим: Supabase ----------
-const SB_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const SB_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
 
 type DbGift = Omit<PublicGift, 'images' | 'emoji'> & { images: { path: string; alt: string | null; kind: 'photo' | 'reference' }[] }
 type DbCatalog = {
@@ -111,10 +112,7 @@ type DbCatalog = {
   gifts: DbGift[]
 }
 
-export const mediaUrl = (path: string) => `${SB_URL}/storage/v1/object/public/public-media/${path}`
-
-function liveApi(url: string, key: string): WishlistApi {
-  const sb = createClient(url, key, { auth: { persistSession: true, detectSessionInUrl: true } })
+function liveApi(sb: SupabaseClient, url: string, key: string): WishlistApi {
   const bundled = new Map(seedGifts().map(g => [g.slug, g]))
 
   const rpcError = (e: { message?: string; hint?: string | null }) =>
@@ -148,7 +146,7 @@ function liveApi(url: string, key: string): WishlistApi {
         ...rest,
         welcomeText: rest.welcomeText || DEFAULT_WELCOME,
         heroImageUrl: heroImagePath ? mediaUrl(heroImagePath) : heroPhoto,
-        idrPerRub: String(rest.idrPerRub).replace(/\.?0+$/, ''),
+        idrPerRub: String(rest.idrPerRub).includes('.') ? String(rest.idrPerRub).replace(/\.?0+$/, '') : String(rest.idrPerRub),
       }
       const gifts: PublicGift[] = d.gifts.map(g => {
         const seed = bundled.get(g.slug)
@@ -166,6 +164,10 @@ function liveApi(url: string, key: string): WishlistApi {
       return fn<CreatedContribution>('create-contribution', { draft, turnstileToken })
     },
     async reportPaid(id, token) { await rpc('report_paid', { p_id: id, p_token: token }) },
+    async status(id, token) {
+      try { return (await rpc<{ status: ContributionStatus }>('get_my_contribution', { p_id: id, p_token: token })).status }
+      catch (e) { return e instanceof ApiError && e.code === 'not_found' ? 'cancelled' : null }
+    },
     async cancel(id, token) { await rpc('cancel_my_contribution', { p_id: id, p_token: token }) },
     async uploadReceipt(id, token, file) {
       const err = checkReceipt(file)
@@ -179,4 +181,4 @@ function liveApi(url: string, key: string): WishlistApi {
   }
 }
 
-export const api: WishlistApi = SB_URL && SB_KEY ? liveApi(SB_URL, SB_KEY) : previewApi()
+export const api: WishlistApi = client && SB_URL && SB_KEY ? liveApi(client, SB_URL, SB_KEY) : previewApi()

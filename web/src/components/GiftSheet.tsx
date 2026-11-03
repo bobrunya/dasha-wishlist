@@ -33,6 +33,18 @@ export function GiftSheet({ gift, settings, onClose, onChanged }: {
   const [receiptSent, setReceiptSent] = useState(!!pending?.receipt)
   const dialog = useRef<HTMLDivElement>(null)
 
+  // Сверяем сохранённую заявку с базой: Даша могла уже подтвердить или отклонить её.
+  useEffect(() => {
+    if (!pending) return
+    let alive = true
+    api.status(pending.c.id, pending.c.cancelToken).then(st => {
+      if (!alive || !st) return
+      if (st === 'pending_transfer' || st === 'awaiting_confirmation') return
+      savePending(gift.id, null); setCreated(null); setStep('details')
+    })
+    return () => { alive = false }
+  }, [pending, gift.id])
+
   useEffect(() => {
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
