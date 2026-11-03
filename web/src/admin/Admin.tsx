@@ -342,6 +342,15 @@ function ContributionCard({ c, gift, data, run }: { c: Contribution; gift?: Gift
             c.status === 'confirmed' ? 'Отменить уже подтверждённый перевод? Сумма уйдёт из прогресса подарка.' : 'Отменить заявку и снять бронь?')} className={btnSoft}>Отменить</button>
         )}
         <button onClick={() => setEditing(e => !e)} className={btnSoft}>{editing ? 'Закрыть' : 'Изменить'}</button>
+        <button onClick={() => {
+          if (!confirm(`Удалить заявку № ${c.public_ref} от ${c.donor_name} навсегда?\n\nОна исчезнет из списка и из прогресса подарка. Используйте для тестов и ошибок.`)) return
+          run(async () => {
+            const { data: r, error } = await sb!.rpc('admin_delete_contribution', { p_id: c.id })
+            const files = (r as { receipts?: string[] } | null)?.receipts ?? []
+            if (!error && files.length) await sb!.storage.from('receipts').remove(files)
+            return { error }
+          }, 'Заявка удалена')
+        }} className={`${btn} text-cocoa-mute underline underline-offset-4 hover:text-cocoa`}>Удалить навсегда</button>
       </div>
       {editing && <EditContribution c={c} run={run} onDone={() => setEditing(false)} />}
     </Card>
@@ -733,7 +742,7 @@ function NotifyBox({ s, run }: { s: AdminSettings; run: Run }) {
 const ACTION: Record<string, string> = {
   'contribution.create': 'Новая заявка', 'contribution.report_paid': 'Гость сообщил о переводе', 'contribution.cancel': 'Гость отменил выбор',
   'contribution.confirm': 'Подтверждён перевод', 'contribution.rejected': 'Заявка отклонена', 'contribution.cancelled': 'Заявка отменена',
-  'contribution.edit': 'Заявка изменена', 'contribution.manual': 'Добавлен перевод вручную', 'conflict.resolve': 'Конфликт решён',
+  'contribution.edit': 'Заявка изменена', 'contribution.manual': 'Добавлен перевод вручную', 'contribution.delete': 'Заявка удалена', 'conflict.resolve': 'Конфликт решён',
   'rate.set': 'Изменён курс', update: 'Изменено', insert: 'Добавлено', delete: 'Удалено',
 }
 const ENTITY: Record<string, string> = { gifts: 'подарок', payment_settings: 'реквизиты', site_settings: 'настройки сайта', admin_settings: 'уведомления' }

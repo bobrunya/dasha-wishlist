@@ -108,7 +108,7 @@ function Details({ gift, settings, onGive }: { gift: PublicGift; settings: SiteS
           <div className="rounded-2xl bg-blush px-5 py-4 text-center font-semibold">Подарено 💗 Спасибо всем!</div>
         ) : closed ? (
           <div className="rounded-2xl bg-cream-deep px-5 py-4 text-center text-sm text-cocoa-soft">
-            {p.available === 0 ? 'Оставшаяся сумма сейчас забронирована другими дарителями. Загляните чуть позже.' : 'Приём подарков сейчас приостановлен.'}
+            {p.available === 0 ? 'Всю сумму уже выбрали другие гости, ждём их переводы. Если кто-то не переведёт за 48 часов, подарок снова станет доступен — загляните позже.' : 'Приём подарков сейчас приостановлен.'}
           </div>
         ) : (
           <button onClick={onGive} className="w-full rounded-full bg-cocoa py-3.5 font-semibold text-cream shadow-lift transition hover:bg-cocoa-soft">Подарить</button>

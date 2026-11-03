@@ -70,11 +70,14 @@ export function goalOf(g: PublicGift): number | null {
 export function progressOf(g: PublicGift) {
   const goal = goalOf(g)
   const confirmed = g.confirmedMinor
-  if (goal === null) return { goal, confirmed, remaining: null, available: null, percent: null, funded: false }
+  if (goal === null) return { goal, confirmed, remaining: null, available: null, reserved: 0, percent: null, reservedPercent: 0, funded: false, taken: false }
   const remaining = Math.max(0, goal - confirmed)
-  const available = Math.max(0, goal - confirmed - g.reservedMinor)
+  const reserved = Math.min(remaining, g.reservedMinor)          // выбрано гостями, перевод ещё не подтверждён
+  const available = remaining - reserved                        // что реально можно выбрать сейчас
   const percent = Math.min(100, Math.floor((confirmed * 100) / goal))
-  return { goal, confirmed, remaining, available, percent, funded: remaining === 0 }
+  const reservedPercent = Math.min(100 - percent, Math.ceil((reserved * 100) / goal))
+  const funded = remaining === 0
+  return { goal, confirmed, remaining, available, reserved, percent, reservedPercent, funded, taken: !funded && available === 0 }
 }
 
 const UNIT: Record<Currency, number> = { RUB: 100, IDR: 1 }

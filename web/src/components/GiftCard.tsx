@@ -24,11 +24,16 @@ export function GiftArt({ gift, className = '' }: { gift: PublicGift; className?
   )
 }
 
-export function ProgressBar({ percent, funded }: { percent: number; funded: boolean }) {
+export function ProgressBar({ percent, reservedPercent = 0, funded }: { percent: number; reservedPercent?: number; funded: boolean }) {
+  const min = (v: number) => Math.max(v, v > 0 ? 4 : 0)
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-cream-deep" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
-      <div className={`h-full rounded-full transition-[width] duration-700 ${funded ? 'bg-blush-deep' : 'bg-gradient-to-r from-baby-deep to-blush-deep'}`}
-        style={{ width: `${Math.max(percent, percent > 0 ? 4 : 0)}%` }} />
+    <div className="flex h-2 overflow-hidden rounded-full bg-cream-deep" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+      <div className={`h-full transition-[width] duration-700 ${funded ? 'bg-blush-deep' : 'bg-gradient-to-r from-baby-deep to-blush-deep'}`}
+        style={{ width: `${min(percent)}%` }} />
+      {reservedPercent > 0 && (
+        <div className="h-full bg-[repeating-linear-gradient(45deg,var(--color-blush-deep)_0_4px,var(--color-blush)_4px_8px)] opacity-70 transition-[width] duration-700"
+          style={{ width: `${min(reservedPercent)}%` }} title="Выбрано, ждём перевод" />
+      )}
     </div>
   )
 }
@@ -57,13 +62,19 @@ export function ProgressInfo({ gift, rate }: { gift: PublicGift; rate: string })
   const units = gift.kind === 'quantity' && gift.unitPriceMinor ? Math.floor(p.confirmed / gift.unitPriceMinor) : null
   return (
     <div className="space-y-1.5">
-      <ProgressBar percent={p.percent!} funded={p.funded} />
+      <ProgressBar percent={p.percent!} reservedPercent={p.reservedPercent} funded={p.funded} />
       <div className="flex justify-between gap-2 text-xs text-cocoa-soft">
         <span>
           {units !== null ? `${units} из ${gift.targetQuantity}` : `Собрано ${p.percent}%`}
         </span>
-        {!p.funded && <span>Осталось {dual(p.remaining!, gift.currency, rate).rub}</span>}
+        {p.taken ? <span>Всё уже выбрано</span> : !p.funded && <span>Осталось {dual(p.available!, gift.currency, rate).rub}</span>}
       </div>
+      {p.reserved > 0 && (
+        <p className="text-[11px] text-cocoa-mute">
+          <span className="mr-1 inline-block size-2 rounded-full bg-blush-deep align-middle" />
+          {dual(p.reserved, gift.currency, rate).rub} уже выбрали, ждём перевод
+        </p>
+      )}
     </div>
   )
 }
@@ -72,7 +83,7 @@ export function GiftCard({ gift, rate, categoryTitle, onOpen, index }: {
   gift: PublicGift; rate: string; categoryTitle?: string; onOpen: () => void; index: number
 }) {
   const p = progressOf(gift)
-  const disabled = p.funded || !gift.isOpen
+  const disabled = p.funded || p.taken || !gift.isOpen
   return (
     <article
       className="group flex animate-fade-up flex-col overflow-hidden rounded-card bg-white shadow-soft transition duration-300 hover:-translate-y-1 hover:shadow-lift"
@@ -82,6 +93,9 @@ export function GiftCard({ gift, rate, categoryTitle, onOpen, index }: {
         <GiftArt gift={gift} className="aspect-[4/3] w-full transition duration-500 group-hover:scale-[1.03]" />
         {categoryTitle && (
           <span className="absolute top-3 left-3 rounded-full bg-white/85 px-3 py-1 text-[11px] font-semibold text-cocoa-soft backdrop-blur">{categoryTitle}</span>
+        )}
+        {p.taken && (
+          <span className="absolute top-3 right-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-cocoa backdrop-blur">Выбран, ждём перевод</span>
         )}
         {p.funded && (
           <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-cocoa px-3 py-1 text-[11px] font-semibold text-cream">
@@ -102,7 +116,7 @@ export function GiftCard({ gift, rate, categoryTitle, onOpen, index }: {
           )}
           <button onClick={onOpen} disabled={disabled}
             className="w-full rounded-full bg-cocoa py-3 text-sm font-semibold text-cream transition hover:bg-cocoa-soft disabled:cursor-default disabled:bg-blush disabled:text-cocoa">
-            {p.funded ? 'Подарено 💗' : !gift.isOpen ? 'Сбор приостановлен' : 'Подарить'}
+            {p.funded ? 'Подарено 💗' : p.taken ? 'Уже выбран' : !gift.isOpen ? 'Сбор приостановлен' : 'Подарить'}
           </button>
         </div>
       </div>
