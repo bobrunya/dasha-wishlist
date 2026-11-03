@@ -43,7 +43,7 @@ const STATUS: Record<Status, [string, string]> = {
   awaiting_confirmation: ['Перевёл(а) — проверить', 'bg-blush'],
   confirmed: ['Подтверждено', 'bg-emerald-100'],
   rejected: ['Отклонено', 'bg-cream-deep'],
-  cancelled: ['Отменено', 'bg-cream-deep'],
+  cancelled: ['Отменено', 'bg-cream-deep'],  // гостем или вами
   expired: ['Бронь истекла', 'bg-cream-deep'],
 }
 const CONFLICT: Record<string, string> = { overpayment: 'Переплата', late_payment: 'Перевод после окончания брони' }
@@ -240,28 +240,30 @@ function Summary({ r }: { r: Report }) {
 type Filter = 'todo' | 'pending' | 'confirmed' | 'closed' | 'all'
 
 function Contributions({ data, run }: { data: Data; run: Run }) {
-  const [filter, setFilter] = useState<Filter>('todo')
+  const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
   const giftById = useMemo(() => new Map(data.gifts.map(g => [g.id, g])), [data.gifts])
 
+  const match = (c: Contribution, f: Filter) => f === 'all' ? true
+    : f === 'todo' ? c.status === 'awaiting_confirmation' || c.has_conflict
+    : f === 'pending' ? c.status === 'pending_transfer'
+    : f === 'confirmed' ? c.status === 'confirmed'
+    : ['rejected', 'cancelled', 'expired'].includes(c.status)
+  const count = (f: Filter) => data.contributions.filter(c => match(c, f)).length
   const list = data.contributions.filter(c => {
-    const okF = filter === 'all' ? true
-      : filter === 'todo' ? c.status === 'awaiting_confirmation' || c.has_conflict
-      : filter === 'pending' ? c.status === 'pending_transfer'
-      : filter === 'confirmed' ? c.status === 'confirmed'
-      : ['rejected', 'cancelled', 'expired'].includes(c.status)
+    const okF = match(c, filter)
     const s = search.trim().toLowerCase()
     const okS = !s || [c.donor_name, c.donor_telegram, c.public_ref, giftById.get(c.gift_id)?.title ?? ''].some(x => x.toLowerCase().includes(s))
     return okF && okS
   })
 
-  const filters: [Filter, string][] = [['todo', 'Требуют внимания'], ['pending', 'Ждут перевода'], ['confirmed', 'Подтверждённые'], ['closed', 'Закрытые'], ['all', 'Все']]
+  const filters: [Filter, string][] = [['all', 'Все'], ['todo', 'Проверить перевод'], ['pending', 'Ждут перевода'], ['confirmed', 'Подтверждённые'], ['closed', 'Отменённые и истёкшие']]
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {filters.map(([k, t]) => (
-          <button key={k} onClick={() => setFilter(k)} className={`${btn} py-1.5 ${filter === k ? 'bg-blush-deep' : 'bg-white shadow-soft'}`}>{t}</button>
+          <button key={k} onClick={() => setFilter(k)} className={`${btn} py-1.5 ${filter === k ? 'bg-blush-deep' : 'bg-white shadow-soft'}`}>{t} <span className="opacity-60">{count(k)}</span></button>
         ))}
       </div>
       <div className="flex flex-wrap gap-2">
@@ -270,7 +272,7 @@ function Contributions({ data, run }: { data: Data; run: Run }) {
         <button onClick={() => exportCsv(data)} className={btnSoft}>Скачать CSV</button>
       </div>
       {adding && <ManualAdd gifts={data.gifts} run={run} onDone={() => setAdding(false)} />}
-      {list.length === 0 && <p className="py-10 text-center text-sm text-cocoa-mute">Здесь пока пусто.</p>}
+      {list.length === 0 && <p className="py-10 text-center text-sm text-cocoa-mute">{data.contributions.length ? 'В этом разделе пусто — загляните во «Все».' : 'Заявок пока нет.'}</p>}
       {list.map(c => <ContributionCard key={c.id} c={c} gift={giftById.get(c.gift_id)} data={data} run={run} />)}
     </div>
   )
@@ -729,7 +731,7 @@ function NotifyBox({ s, run }: { s: AdminSettings; run: Run }) {
 
 // ---------- Журнал ----------
 const ACTION: Record<string, string> = {
-  'contribution.create': 'Новая заявка', 'contribution.report_paid': 'Гость сообщил о переводе', 'contribution.cancel': 'Гость отменил заявку',
+  'contribution.create': 'Новая заявка', 'contribution.report_paid': 'Гость сообщил о переводе', 'contribution.cancel': 'Гость отменил выбор',
   'contribution.confirm': 'Подтверждён перевод', 'contribution.rejected': 'Заявка отклонена', 'contribution.cancelled': 'Заявка отменена',
   'contribution.edit': 'Заявка изменена', 'contribution.manual': 'Добавлен перевод вручную', 'conflict.resolve': 'Конфликт решён',
   'rate.set': 'Изменён курс', update: 'Изменено', insert: 'Добавлено', delete: 'Удалено',

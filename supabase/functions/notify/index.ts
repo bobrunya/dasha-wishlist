@@ -5,7 +5,7 @@ import { admin, json } from '../_shared/http.ts'
 
 const SITE = Deno.env.get('SITE_URL') ?? 'https://bobrunya.github.io/dasha-wishlist/'
 const FLAG: Record<string, string> = {
-  new: 'notify_new', reported: 'notify_reported_paid', receipt: 'notify_receipt',
+  new: 'notify_new', cancelled: 'notify_new', reported: 'notify_reported_paid', receipt: 'notify_receipt',
   expired: 'notify_expired', funded: 'notify_fully_funded', conflict: 'notify_conflict',
 }
 
@@ -54,6 +54,7 @@ Deno.serve(async req => {
         text = {
           new: `🎁 ${who} выбрал(а) подарок ${gift} — ${sum}`,
           reported: `💸 ${who} пишет, что перевёл(а) ${sum} за ${gift}\nПроверьте банк. Если деньги пришли, нажмите «Подтвердить» в админке.`,
+          cancelled: `↩️ ${who} отменил(а) выбор ${gift} — ${sum}\nСумма снова свободна для других.`,
           receipt: `📎 ${who} прислал(а) чек за ${gift} — ${sum}\nПосмотреть можно в админке.`,
           expired: `⌛ ${who} выбрал(а) ${gift}, но за ${s.reservation_hours} ч не перевёл(а) ${sum}\nСумма снова свободна для других. Можете написать ${name} в Telegram.`,
           conflict: over
